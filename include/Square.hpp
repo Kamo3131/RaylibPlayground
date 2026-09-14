@@ -10,7 +10,7 @@ class Square {
     public:
         Square(const float length, const float size);
         ~Square() = default;
-        void DrawSquare(const Vector3 origin, const Color color) const;
+        void Draw(const Vector3 origin, const Color color) const;
         void SetLength(const float length);
         [[nodiscard]] float GetLength() const;
         void SetSize(const float size);
