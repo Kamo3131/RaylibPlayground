@@ -27,6 +27,11 @@ ReturnType reconstructPath(const std::map<Location, Location>& came_from, const 
 template<typename Location, typename Graph, typename ReturnType>
 ReturnType aStar(Graph& graph, const Location& start, const Location& target) {
     // std::cout << "Graf1\n";
+    if (start == target) 
+    {
+        return ReturnType();
+    }
+
     using PQElement = std::pair<double, Location>;
     std::priority_queue<PQElement, std::vector<PQElement>, std::greater<PQElement>> openSet;
     
