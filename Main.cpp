@@ -93,14 +93,15 @@ int main() {
         
         if(IsKeyPressed(KEY_Z)) camera.target = {0.0f, 0.0f, 0.0f};
         
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        if (!moving && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
         {
+            moves.clear();
             new_cube_position = {position_highlight.x, cube_size.y * 0.5f, position_highlight.z};
+            std::cout << "{ " << cube_position.x << ", " << cube_position.y << " }, { " << new_cube_position.x << ", " << new_cube_position.y << " }\n";
             moves = aStar<Point, GridGraph<Point>, std::vector<Point>>(
                 graph,
                 {cube_position.x, cube_position.z},
                 {new_cube_position.x, new_cube_position.z});
-
             if (moves.size() > 0) {    
                 // for(int i = 0; i < moves.size(); ++i) {
                 //     std::cout << "( "<<moves.at(i).x << ", " << moves.at(i).z << ") ";
@@ -115,6 +116,7 @@ int main() {
             else
             {
                 moving = false;
+                
             }
         }
         if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
@@ -156,7 +158,6 @@ int main() {
             {
                 cube_position = {movement_position.x, movement_position.y, movement_position.z};
                 if (active_move >= (moves.size() - 1)) {
-                    
                     moving = false;
                 }
                 else 
