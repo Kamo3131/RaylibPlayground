@@ -32,3 +32,7 @@ double GridGraph<Point>::cost(const Point& from, const Point& to) {
     return hypot(from.x - to.x, from.z - to.z);
 }
 
+bool GridGraph<Point>::fieldIsBlockade(const Point& field) {
+    return m_blockades.contains(field);
+}
+

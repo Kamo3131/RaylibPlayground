@@ -11,6 +11,7 @@ struct GridGraph {
     std::set<Location> m_blockades;
     std::vector<Location> neighbors(const Location& p);
     double cost(const Location& from, const Location& to);
+    bool fieldIsBlockade(const Location& field);
 };
 template<>
 struct GridGraph<Point> {
@@ -18,6 +19,7 @@ struct GridGraph<Point> {
     std::set<Point> m_blockades;
     std::vector<Point> neighbors(const Point& p);
     double cost(const Point& from, const Point& to);
+    bool fieldIsBlockade(const Point& field);
 };
 
 #endif /* GRIDGRAPH_HPP */
