@@ -9,7 +9,6 @@ bool Point::operator<(const Point& o) const {
 }
 
 bool Point::operator==(const Point& o) const {
-    return x == o.x && z == o.z;
+    return abs(x - o.x) < 0.001 && abs(z - o.z) < 0.001;
 }
-
 

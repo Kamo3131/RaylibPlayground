@@ -64,6 +64,7 @@ int main() {
     float speed = 5.0f;
     float move_angle = 0.0f;
     bool moving = false;
+    bool path_preview = false;
 
     Vector3 cube_size = {1.0f, 1.0f, 1.0f};
     Vector3 cube_position = {0.0f, cube_size.y * 0.5f, 0.0f};
@@ -75,9 +76,11 @@ int main() {
     std::vector<Blockade> blockades;
 
     std::vector<Point> moves;
+    std::vector<Point> path_high;
     int active_move = 0;
     GridGraph<Point> graph;
-    Square highlightSquare(cube_size.x/2, 0.05f);
+    Square pathSquare(cube_size.x/4.0f, 0.05f);
+    Square highlightSquare(cube_size.x/2.0f, 0.05f);
 
     Ray ray = {0.0f, 0.0f, 0.0f};
     // RayCollision collision = {0.0f, 0.0f, 0.0f};
@@ -89,19 +92,42 @@ int main() {
         UpdateCamera(&camera, CAMERA_FIRST_PERSON);
 
         ray = GetScreenToWorldRay(GetMousePosition(), camera);
+        Vector3 temp_position_high = position_highlight;
         position_highlight = {roundToSecond((-ray.position.y * ray.direction.x / ray.direction.y)+ray.position.x), 0.0f, roundToSecond((-ray.position.y * ray.direction.z / ray.direction.y)+ray.position.z)};
-        
+        if(path_preview && !(temp_position_high.x == position_highlight.x 
+            && temp_position_high.y == position_highlight.y 
+            && temp_position_high.z == position_highlight.z)) 
+            {
+            if(!moving) {
+                active_move = 0;
+            }
+            path_high.clear();
+            path_high = aStar<Point, GridGraph<Point>, std::vector<Point>>(
+                graph,
+                {roundToSecond(cube_position.x), roundToSecond(cube_position.z)},
+                {position_highlight.x, position_highlight.z});
+        }
         if(IsKeyPressed(KEY_Z)) camera.target = {0.0f, 0.0f, 0.0f};
+        if(IsKeyPressed(KEY_P)) path_preview = !path_preview;
         
         if ( IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
         {
-            moves.clear();
+            
             new_cube_position = {position_highlight.x, cube_size.y * 0.5f, position_highlight.z};
             std::cout << "{ " << cube_position.x << ", " << cube_position.z << " }, { " << new_cube_position.x << ", " << new_cube_position.z << " }\n";
-            moves = aStar<Point, GridGraph<Point>, std::vector<Point>>(
-                graph,
-                {roundToSecond(cube_position.x), roundToSecond(cube_position.z)},
-                {new_cube_position.x, new_cube_position.z});
+            if (!path_preview)
+            {
+                moves.clear();
+                moves = aStar<Point, GridGraph<Point>, std::vector<Point>>(
+                    graph,
+                    {roundToSecond(cube_position.x), roundToSecond(cube_position.z)},
+                    {new_cube_position.x, new_cube_position.z});
+            }
+            else
+            {
+                moves = std::move(path_high);
+            }
+
             if (moves.size() > 0) {    
                 for(int i = 0; i < moves.size(); ++i) {
                     std::cout << "( "<<moves.at(i).x << ", " << moves.at(i).z << ") ";
@@ -185,7 +211,11 @@ int main() {
                 {
                     b.Draw();
                 }
-
+                if (path_preview) {
+                    for(const Point& p : path_high) {
+                        pathSquare.Draw({p.x, 0.0f, p.z}, raylib::Color::Green());
+                    }
+                }
                 DrawRay(ray, raylib::Color::Green());
                 DrawGrid(100, 0.5f);
 
