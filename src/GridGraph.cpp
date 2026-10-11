@@ -15,7 +15,7 @@ void GridGraph<Point>::addBlockade(const Point&& blockade, const float width, co
 
 std::vector<Point> GridGraph<Point>::neighbors(const Point& p) {
     std::vector<Point> result;
-    std::vector<Point> dirs = {{0.5f, 0.5f}, {0.0f, -0.5f}, {-0.5f, 0.0f}, {0.5f, 0.0f}, {0.5f, 0.5f}, {0.5f, -0.5f}, {-0.5f, 0.5f}, {-0.5f, -0.5f}};
+    std::vector<Point> dirs = {{0.0f, 0.5f}, {0.0f, -0.5f}, {-0.5f, 0.0f}, {0.5f, 0.0f}, {0.5f, 0.5f}, {0.5f, -0.5f}, {-0.5f, 0.5f}, {-0.5f, -0.5f}};
     for (const auto& d : dirs) {
         Point next{p.x + d.x, p.z + d.z};
         
@@ -30,5 +30,9 @@ std::vector<Point> GridGraph<Point>::neighbors(const Point& p) {
 
 double GridGraph<Point>::cost(const Point& from, const Point& to) {
     return hypot(from.x - to.x, from.z - to.z);
+}
+
+bool GridGraph<Point>::fieldIsBlockade(const Point& field) {
+    return m_blockades.contains(field);
 }
 
