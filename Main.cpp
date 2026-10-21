@@ -5,6 +5,15 @@
 #include "Blockade.hpp"
 #include "AStar.hpp"
 #include "GridGraph.hpp"
+#include "Dijkstra.hpp"
+#include <chrono>
+
+
+enum Algorithm {
+  AStar = 0,
+  Dijkstra = 1,
+  NumberOfAlgorithms = 2,  
+};
 
 float roundToSecond(const float& number) {
     float rounded = round(number * 10);
@@ -65,6 +74,7 @@ int main() {
     float move_angle = 0.0f;
     bool moving = false;
     bool path_preview = false;
+    Algorithm selected_algorithm = Algorithm::AStar;
 
     Vector3 cube_size = {1.0f, 1.0f, 1.0f};
     Vector3 cube_position = {0.0f, cube_size.y * 0.5f, 0.0f};
@@ -82,6 +92,7 @@ int main() {
     Square pathSquare(cube_size.x/4.0f, 0.05f);
     Square highlightSquare(cube_size.x/2.0f, 0.05f);
 
+    std::chrono::microseconds::rep elapsed_time = 0;
     Ray ray = {0.0f, 0.0f, 0.0f};
     // RayCollision collision = {0.0f, 0.0f, 0.0f};
     // collision.hit = true;
@@ -102,13 +113,33 @@ int main() {
                 active_move = 0;
             }
             path_high.clear();
-            path_high = aStar<Point, GridGraph<Point>, std::vector<Point>>(
-                graph,
-                {roundToSecond(cube_position.x), roundToSecond(cube_position.z)},
-                {position_highlight.x, position_highlight.z});
+
+            switch (selected_algorithm)
+                {
+                case AStar:
+                    path_high = aStar<Point, GridGraph<Point>, std::vector<Point>>(
+                        graph,
+                        {roundToSecond(cube_position.x), roundToSecond(cube_position.z)},
+                        {position_highlight.x, position_highlight.z});
+                    break;
+                case Dijkstra:
+                    path_high = dijkstra<Point, GridGraph<Point>, std::vector<Point>>(
+                        graph,
+                        {roundToSecond(cube_position.x), roundToSecond(cube_position.z)},
+                        {position_highlight.x, position_highlight.z});
+                    break;
+                }
         }
         if(IsKeyPressed(KEY_Z)) camera.target = {0.0f, 0.0f, 0.0f};
         if(IsKeyPressed(KEY_P)) path_preview = !path_preview;
+        if(IsKeyPressed(KEY_C)) {
+            int algoNr = selected_algorithm; 
+            algoNr++;
+            if (Algorithm::NumberOfAlgorithms == algoNr) {
+                algoNr = 0;
+            }
+            selected_algorithm = static_cast<Algorithm>(algoNr);
+        }
         
         if ( IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
         {
@@ -118,10 +149,26 @@ int main() {
             if (!path_preview)
             {
                 moves.clear();
-                moves = aStar<Point, GridGraph<Point>, std::vector<Point>>(
+                std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+                switch (selected_algorithm)
+                {
+                case AStar:
+                    moves = aStar<Point, GridGraph<Point>, std::vector<Point>>(
                     graph,
                     {roundToSecond(cube_position.x), roundToSecond(cube_position.z)},
                     {new_cube_position.x, new_cube_position.z});
+                    break;
+                case Dijkstra:
+                    moves = dijkstra<Point, GridGraph<Point>, std::vector<Point>>(
+                    graph,
+                    {roundToSecond(cube_position.x), roundToSecond(cube_position.z)},
+                    {new_cube_position.x, new_cube_position.z});
+                    break;
+                }
+
+
+                std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
             }
             else
             {
@@ -229,8 +276,15 @@ int main() {
 
             raylib::DrawText(TextFormat("Active move: %i; moves size: %i", active_move, moves.size()), 10, 70, 20, raylib::Color::Black());
             raylib::DrawText(TextFormat("Movement position: %f, %f", movement_position.x, movement_position.z), 10, 90, 20, raylib::Color::Black());
-            raylib::DrawText("Moves: ", 10, 110, 20, raylib::Color::Black());
-
+            raylib::DrawText(TextFormat("Last pathfinding duration: %f ms", static_cast<double>(elapsed_time) / 1000.0), 10, 110, 20, raylib::Color::Black());
+            switch(selected_algorithm) {
+                case AStar:
+                    raylib::DrawText("Selected algorithm: A* (Press C to change)", 10, 130, 20, raylib::Color::Black());
+                    break;
+                case Dijkstra:
+                    raylib::DrawText("Selected algorithm: Dijkstra (Press C to change)", 10, 130, 20, raylib::Color::Black());
+                    break;
+            }
             
             DrawFPS(10, 40);
         EndDrawing();
