@@ -1,56 +1,32 @@
 #include <iostream>
-
 #include "raylib-cpp.hpp"
 #include "Square.hpp"
 #include "Blockade.hpp"
+#include "AStar.hpp"
+#include "GridGraph.hpp"
+#include "Dijkstra.hpp"
+#include <chrono>
+#include "Utility.hpp"
 
-float roundToSecond(const float& number) {
-    float rounded = round(number * 10);
-    float result = 0.0f;
-    if (number < 0) {
-        int remainder = static_cast<int>(-rounded)%10;
-        result = static_cast<float>(static_cast<int>(rounded)/10);
-        if (remainder > 3 && remainder < 7) 
-        {
-            result -= 0.5f;
-        } 
-        else if (remainder >= 7) 
-        {
-            result -= 1.0f;
-        }
-    }
-    else if (number > 0) {
-        int remainder = static_cast<int>(rounded)%10;
-        result = static_cast<float>(static_cast<int>(rounded)/10);
-        if (remainder > 3 && remainder < 7) 
-        {
-            result += 0.5f;
-        } 
-        else if (remainder >= 7) 
-        {
-            result += 1.0f;
-        }
-    }
-    return result;
-}
+enum Algorithm {
+  AStar = 0,
+  Dijkstra = 1,
+  NumberOfAlgorithms = 2,  
+};
 
 void moveCube(Vector3 &current_position, const float speed, const float angle, const float frame_time) 
 {
-    current_position.z += speed * frame_time * sin(angle);
-    current_position.x += speed * frame_time * cos(angle);
-}
-
-static Vector3 divideVector3(const Vector3& value, const float scalar)
-{
-    return {value.x / scalar, value.y / scalar, value.z / scalar};
+    current_position.z += speed * frame_time * std::sin(angle);
+    current_position.x += speed * frame_time * std::cos(angle);
 }
 
 int main() {
-    int screenWidth = 1920;
-    int screenHeight = 1080;
+    int screenWidth = 1000;
+    int screenHeight = 800;
 
     raylib::Window window(screenWidth, screenHeight, "raylib-cpp - basic window");
 
+    // SetWindowPosition(0, 0);
     Camera3D camera = {};
     camera.position = {0.0f, 10.0f, 10.0f};
     camera.target = {0.0f, 0.0f, 0.0f};
@@ -60,40 +36,133 @@ int main() {
 
     float speed = 5.0f;
     float move_angle = 0.0f;
+    float last_distance = 0.0f;
     bool moving = false;
+    bool path_preview = false;
+    Algorithm selected_algorithm = Algorithm::AStar;
 
     Vector3 cube_size = {1.0f, 1.0f, 1.0f};
     Vector3 cube_position = {0.0f, cube_size.y * 0.5f, 0.0f};
     Vector3 new_cube_position = cube_position;
+    Vector3 movement_position = cube_position;
     Vector3 position_highlight = {0.0f, 0.0f, 0.0f};
     
     Vector3 blockade_size = {0.5f, 0.5f, 0.5f};
     std::vector<Blockade> blockades;
 
-    Square highlightSquare(cube_size.x/2, 0.05f);
+    std::vector<Point> moves;
+    std::vector<Point> path_high;
+    int active_move = 0;
+    GridGraph<Point> graph;
+    Square pathSquare(cube_size.x/4.0f, 0.05f);
+    Square highlightSquare(cube_size.x/2.0f, 0.05f);
 
+    std::chrono::microseconds::rep elapsed_time = 0;
     Ray ray = {0.0f, 0.0f, 0.0f};
     // RayCollision collision = {0.0f, 0.0f, 0.0f};
     // collision.hit = true;
-     
-    SetTargetFPS(240);
+    SetTargetFPS(20);
     EnableCursor();
     while (!window.ShouldClose())
     {
         UpdateCamera(&camera, CAMERA_FIRST_PERSON);
 
         ray = GetScreenToWorldRay(GetMousePosition(), camera);
+        Vector3 temp_position_high = position_highlight;
         position_highlight = {roundToSecond((-ray.position.y * ray.direction.x / ray.direction.y)+ray.position.x), 0.0f, roundToSecond((-ray.position.y * ray.direction.z / ray.direction.y)+ray.position.z)};
-        
-        if(IsKeyPressed(KEY_Z)) camera.target = {0.0f, 0.0f, 0.0f};
-        
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-        {
-            new_cube_position = {position_highlight.x, cube_size.y * 0.5f, position_highlight.z};
-            move_angle = atan2f(new_cube_position.z - cube_position.z, new_cube_position.x - cube_position.x);
-            moving = true;
+        if(path_preview && !(temp_position_high.x == position_highlight.x 
+            && temp_position_high.y == position_highlight.y 
+            && temp_position_high.z == position_highlight.z)) 
+            {
+            if(!moving) {
+                active_move = 0;
+            }
+            path_high.clear();
+
+            switch (selected_algorithm)
+                {
+                case AStar:
+                    path_high = aStar<Point, GridGraph<Point>, std::vector<Point>>(
+                        graph,
+                        {roundToSecond(cube_position.x), roundToSecond(cube_position.z)},
+                        {position_highlight.x, position_highlight.z});
+                    break;
+                case Dijkstra:
+                    path_high = dijkstra<Point, GridGraph<Point>, std::vector<Point>>(
+                        graph,
+                        {roundToSecond(cube_position.x), roundToSecond(cube_position.z)},
+                        {position_highlight.x, position_highlight.z});
+                    break;
+                }
         }
-        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
+        if(IsKeyPressed(KEY_Z)) camera.target = {0.0f, 0.0f, 0.0f};
+        if(IsKeyPressed(KEY_P)) path_preview = !path_preview;
+        if(IsKeyPressed(KEY_C)) {
+            int algoNr = selected_algorithm; 
+            algoNr++;
+            if (Algorithm::NumberOfAlgorithms == algoNr) {
+                algoNr = 0;
+            }
+            selected_algorithm = static_cast<Algorithm>(algoNr);
+        }
+        
+        if ( IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        {
+            
+            new_cube_position = {position_highlight.x, cube_size.y * 0.5f, position_highlight.z};
+            std::cout << "{ " << cube_position.x << ", " << cube_position.z << " }, { " << new_cube_position.x << ", " << new_cube_position.z << " }\n";
+            if (!path_preview)
+            {
+                moves.clear();
+                std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+                switch (selected_algorithm)
+                {
+                case AStar:
+                    moves = aStar<Point, GridGraph<Point>, std::vector<Point>>(
+                    graph,
+                    {roundToSecond(cube_position.x), roundToSecond(cube_position.z)},
+                    {new_cube_position.x, new_cube_position.z});
+                    break;
+                case Dijkstra:
+                    moves = dijkstra<Point, GridGraph<Point>, std::vector<Point>>(
+                    graph,
+                    {roundToSecond(cube_position.x), roundToSecond(cube_position.z)},
+                    {new_cube_position.x, new_cube_position.z});
+                    break;
+                }
+
+
+                std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+            }
+            else
+            {
+                moves = std::move(path_high);
+            }
+
+            if (moves.size() > 0) {    
+                for(int i = 0; i < moves.size(); ++i) {
+                    std::cout << "( "<<moves.at(i).x << ", " << moves.at(i).z << ") ";
+                }
+                std::cout << std::endl;
+                active_move = 1;
+                Point first_move = moves.at(active_move);
+                movement_position = {first_move.x, cube_position.y, first_move.z};
+
+                move_angle = std::atan2f(movement_position.z - cube_position.z, movement_position.x - cube_position.x);
+                moving = true;
+
+                float x = movement_position.x - cube_position.x;
+                float z = movement_position.z - cube_position.z;
+                last_distance = std::sqrtf(x * x + z * z);
+            }
+            else
+            {
+                moving = false;
+                
+            }
+        }
+        if (!moving && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
         {
             const Vector3 blockade_position = {position_highlight.x, blockade_size.y * 0.5f, position_highlight.z};
             bool temp = false;
@@ -107,35 +176,36 @@ int main() {
             if (!temp) 
             {
                 blockades.emplace_back(blockade_position, blockade_size, raylib::Color::DarkGray());
+                graph.addBlockade({blockade_position.x, blockade_position.z}, blockade_size.x, blockade_size.z);
             }
         }
         
 
         if (moving) 
         {
-            bool blocked = false;
-            for(const Blockade& b : blockades)
+            const float frame_time = GetFrameTime();
+            float x = movement_position.x - cube_position.x;
+            float z = movement_position.z - cube_position.z;
+            float distance = std::sqrtf(x * x + z * z);
+
+            if ((distance <= speed * frame_time || last_distance < distance)) 
             {
-                if(b.PositionIntersects(cube_position, divideVector3(cube_size, 2.0f)))
+                cube_position = {movement_position.x, movement_position.y, movement_position.z};
+                if (active_move >= (moves.size() - 1)) {
+                    moving = false;
+                }
+                else 
                 {
-                    blocked = true;
+                    active_move++;
+                    Point next_move = moves.at(active_move);
+                    movement_position = {next_move.x, cube_position.y, next_move.z};
+                    move_angle = std::atan2f(movement_position.z - cube_position.z, movement_position.x - cube_position.x); 
                 }
             }
-            const float frame_time = GetFrameTime();
-            float x = new_cube_position.x - cube_position.x;
-            float z = new_cube_position.z - cube_position.z;
-            float distance = sqrtf(x * x + z * z);
-            if ((fabs(distance) <= 0.5f && distance <= speed * frame_time) || blocked) 
-            {
-                moving = false;
-                cube_position = {roundToSecond(cube_position.x), cube_position.y, roundToSecond(cube_position.z)};
-            }
-            else
+            if (moving)
             {
                 moveCube(cube_position, speed, move_angle, frame_time);
             }
-            // std::cout << "Current pos: " << cube_position.x << ", " << cube_position.z << std::endl;
-            // std::cout << "New pos: " << new_cube_position.x << ", " << new_cube_position.z << std::endl;
         }
         BeginDrawing();
 
@@ -148,7 +218,11 @@ int main() {
                 {
                     b.Draw();
                 }
-
+                if (path_preview) {
+                    for(const Point& p : path_high) {
+                        pathSquare.Draw({p.x, 0.0f, p.z}, raylib::Color::Green());
+                    }
+                }
                 DrawRay(ray, raylib::Color::Green());
                 DrawGrid(100, 0.5f);
 
@@ -156,8 +230,22 @@ int main() {
                 DrawLine3D({0.0f, 0.0f, 0.0f}, {2.0f, 0.0f, 0.0f}, raylib::Color::Red());
                 DrawLine3D({0.0f, 0.0f, 0.0f}, {0.0f, 2.0f, 0.0f}, raylib::Color::Green());
                 DrawLine3D({0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 2.0f}, raylib::Color::Blue());
+                
 
             EndMode3D();
+
+            raylib::DrawText(TextFormat("Active move: %i; moves size: %i", active_move, moves.size()), 10, 70, 20, raylib::Color::Black());
+            raylib::DrawText(TextFormat("Movement position: %f, %f", movement_position.x, movement_position.z), 10, 90, 20, raylib::Color::Black());
+            raylib::DrawText(TextFormat("Last pathfinding duration: %f ms", static_cast<double>(elapsed_time) / 1000.0), 10, 110, 20, raylib::Color::Black());
+            switch(selected_algorithm) {
+                case AStar:
+                    raylib::DrawText("Selected algorithm: A* (Press C to change)", 10, 130, 20, raylib::Color::Black());
+                    break;
+                case Dijkstra:
+                    raylib::DrawText("Selected algorithm: Dijkstra (Press C to change)", 10, 130, 20, raylib::Color::Black());
+                    break;
+            }
+            
             DrawFPS(10, 40);
         EndDrawing();
     }
