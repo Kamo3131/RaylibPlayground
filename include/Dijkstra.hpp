@@ -7,7 +7,6 @@
 #include <vector>
 #include <queue>
 #include <map>
-#include "Point.hpp"
 #include "ReconstructPath.hpp"
 
 template<typename Location, typename Graph, typename ReturnType>
@@ -28,7 +27,7 @@ ReturnType dijkstra(Graph& graph, const Location& start, const Location& target)
     std::map<Location, Location> came_from;
 
     distance[start] = 0;
-    openSet.push({heuristic(start, target), start});
+    openSet.push({distance[start], start});
     came_from[start] = start;
 
     while(!openSet.empty())

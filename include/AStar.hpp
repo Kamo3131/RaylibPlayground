@@ -6,10 +6,12 @@
 #include <vector>
 #include <queue>
 #include <map>
-#include "Point.hpp"
 #include "ReconstructPath.hpp"
 
-
+template<typename Location>
+inline double heuristic(const Location& a, const Location& b) {
+    return std::hypot(a.x - b.x, a.z - b.z);
+}
 
 template<typename Location, typename Graph, typename ReturnType>
 ReturnType aStar(Graph& graph, const Location& start, const Location& target) {

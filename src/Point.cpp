@@ -9,6 +9,6 @@ bool Point::operator<(const Point& o) const {
 }
 
 bool Point::operator==(const Point& o) const {
-    return abs(x - o.x) < 0.001 && abs(z - o.z) < 0.001;
+    return std::abs(x - o.x) < 0.01f && std::abs(z - o.z) < 0.01f;
 }
 
