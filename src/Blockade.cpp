@@ -31,15 +31,15 @@
     bool Blockade::PositionIntersects(const Vector3& position, const Vector3& size) const
     {
         bool result = true;
-        if (abs(m_position.x - position.x) - m_size.x - size.x >= 0.0f)
+        if (std::abs(m_position.x - position.x) - m_size.x - size.x >= 0.0f)
         {
             result = false;
         }
-        if (abs(m_position.y - position.y) - m_size.y - size.y >= 0.0f)
+        if (std::abs(m_position.y - position.y) - m_size.y - size.y >= 0.0f)
         {
             result = false;
         }
-        if (abs(m_position.z - position.z) - m_size.z - size.z >= 0.0f)
+        if (std::abs(m_position.z - position.z) - m_size.z - size.z >= 0.0f)
         {
             result = false;
         }
