@@ -1,5 +1,4 @@
 #include <iostream>
-
 #include "raylib-cpp.hpp"
 #include "Square.hpp"
 #include "Blockade.hpp"
@@ -7,7 +6,7 @@
 #include "GridGraph.hpp"
 #include "Dijkstra.hpp"
 #include <chrono>
-
+#include "Utility.hpp"
 
 enum Algorithm {
   AStar = 0,
@@ -15,45 +14,10 @@ enum Algorithm {
   NumberOfAlgorithms = 2,  
 };
 
-float roundToSecond(const float& number) {
-    float rounded = round(number * 10);
-    float result = 0.0f;
-    if (number < 0) {
-        int remainder = static_cast<int>(-rounded)%10;
-        result = static_cast<float>(static_cast<int>(rounded)/10);
-        if (remainder > 3 && remainder < 7) 
-        {
-            result -= 0.5f;
-        } 
-        else if (remainder >= 7) 
-        {
-            result -= 1.0f;
-        }
-    }
-    else if (number > 0) {
-        int remainder = static_cast<int>(rounded)%10;
-        result = static_cast<float>(static_cast<int>(rounded)/10);
-        if (remainder > 3 && remainder < 7) 
-        {
-            result += 0.5f;
-        } 
-        else if (remainder >= 7) 
-        {
-            result += 1.0f;
-        }
-    }
-    return result;
-}
-
 void moveCube(Vector3 &current_position, const float speed, const float angle, const float frame_time) 
 {
-    current_position.z += speed * frame_time * sin(angle);
-    current_position.x += speed * frame_time * cos(angle);
-}
-
-static Vector3 divideVector3(const Vector3& value, const float scalar)
-{
-    return {value.x / scalar, value.y / scalar, value.z / scalar};
+    current_position.z += speed * frame_time * std::sin(angle);
+    current_position.x += speed * frame_time * std::cos(angle);
 }
 
 int main() {
@@ -72,6 +36,7 @@ int main() {
 
     float speed = 5.0f;
     float move_angle = 0.0f;
+    float last_distance = 0.0f;
     bool moving = false;
     bool path_preview = false;
     Algorithm selected_algorithm = Algorithm::AStar;
@@ -96,7 +61,7 @@ int main() {
     Ray ray = {0.0f, 0.0f, 0.0f};
     // RayCollision collision = {0.0f, 0.0f, 0.0f};
     // collision.hit = true;
-    SetTargetFPS(240);
+    SetTargetFPS(300);
     EnableCursor();
     while (!window.ShouldClose())
     {
@@ -183,9 +148,13 @@ int main() {
                 active_move = 1;
                 Point first_move = moves.at(active_move);
                 movement_position = {first_move.x, cube_position.y, first_move.z};
-                
-                move_angle = atan2f(movement_position.z - cube_position.z, movement_position.x - cube_position.x);
+
+                move_angle = std::atan2f(movement_position.z - cube_position.z, movement_position.x - cube_position.x);
                 moving = true;
+
+                float x = movement_position.x - cube_position.x;
+                float z = movement_position.z - cube_position.z;
+                last_distance = std::sqrtf(x * x + z * z);
             }
             else
             {
@@ -193,7 +162,7 @@ int main() {
                 
             }
         }
-        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
+        if (!moving && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
         {
             const Vector3 blockade_position = {position_highlight.x, blockade_size.y * 0.5f, position_highlight.z};
             bool temp = false;
@@ -214,21 +183,12 @@ int main() {
 
         if (moving) 
         {
-            // bool blocked = false;
-            // for(const Blockade& b : blockades)
-            // {
-            //     if(b.PositionIntersects(cube_position, divideVector3(cube_size, 2.0f)))
-            //     {
-            //         blocked = true;
-            //     }
-            // }
             const float frame_time = GetFrameTime();
             float x = movement_position.x - cube_position.x;
             float z = movement_position.z - cube_position.z;
-            float distance = sqrtf(x * x + z * z);
+            float distance = std::sqrtf(x * x + z * z);
 
-
-            if ((/*fabs(distance) <= 0.001f &&*/ distance <= speed * frame_time) /*|| blocked*/) 
+            if ((distance <= speed * frame_time || last_distance + 0.5f < distance)) 
             {
                 cube_position = {movement_position.x, movement_position.y, movement_position.z};
                 if (active_move >= (moves.size() - 1)) {
@@ -239,7 +199,7 @@ int main() {
                     active_move++;
                     Point next_move = moves.at(active_move);
                     movement_position = {next_move.x, cube_position.y, next_move.z};
-                    move_angle = atan2f(movement_position.z - cube_position.z, movement_position.x - cube_position.x); 
+                    move_angle = std::atan2f(movement_position.z - cube_position.z, movement_position.x - cube_position.x); 
                 }
             }
             if (moving)
